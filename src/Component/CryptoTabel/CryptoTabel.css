@@ -1,0 +1,23 @@
+.arrow{
+    height: 5px;
+    width: 10px;
+    border: 2px solid black;
+}
+
+.col{
+    border-right: 2px solid black;
+    font-size: 13px
+}
+
+.first-col{
+    border-left: 2px solid black;
+    
+}
+
+.first-row{
+    border-top: 2px solid black;
+}
+
+.row{
+    border-bottom: 2px solid black;
+}
