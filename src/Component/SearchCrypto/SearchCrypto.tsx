@@ -1,23 +1,11 @@
 import React, { Component } from 'react';
 import getCryptoList from '../../Engine/GetCryptoList';
 import Autocomplete from 'react-autocomplete';
+import CriptocurrencySynthesis from '../../GlobalTypes/CriptocurrencySynthesis';
 
-type CriptocurrencySynthesis = {
-    id: string,
-    rank: number,
-    symbol: string,
-    name: string,
-    supply: string,
-    maxSupply: string,
-    marketCapUsd: string,
-    volumeUsd24Hr: string,
-    priceUsd: string,
-    changePercent24Hr: string,
-    vwap24Hr: string
-};
 interface SearchFormState { content: string, itemsList: Array<CriptocurrencySynthesis> };
 
-class SearchForm extends Component <{ onSent }, SearchFormState> {
+class SearchForm extends Component <{ onSent, cryptoInTabel }, SearchFormState> {
     constructor(props) {
         super(props);
         this.state = {
@@ -29,6 +17,22 @@ class SearchForm extends Component <{ onSent }, SearchFormState> {
     selectItems(itemToSearch) {
         const context = this;
         getCryptoList(itemToSearch).then(items => {
+            const filteredItems = items.filter(item=>{
+                const result = context.props.cryptoInTabel.some(element => {
+                    console.log('ciao')
+                    console.log(item.id, element.id)
+                    // if (element.id === item.id) {
+                    //     debugger
+                    // }
+                    return element.id !== item.id
+                });
+                // console.log(result);
+                return result;
+            });
+            
+            // const filteredItems = items.filter(item=>{
+            //     return this.props.cryptoInTabel.indexOf(item) === -1;
+            // });
             context.setState({
                 content: itemToSearch,
                 itemsList: items

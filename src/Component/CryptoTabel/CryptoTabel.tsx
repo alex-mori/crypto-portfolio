@@ -1,65 +1,48 @@
 import React, { Component } from 'react';
 import { Container, Row, Col } from 'react-bootstrap';
-import './CryptoTabel.css'
-import getCryptoPrice from '../../Engine/GetCryptoPrice';
-
-type CriptocurrencySynthesis = {
-    id: string,
-    rank: number,
-    symbol: string,
-    name: string,
-    supply: string,
-    maxSupply: string,
-    marketCapUsd: string,
-    volumeUsd24Hr: string,
-    priceUsd: string,
-    changePercent24Hr: string,
-    vwap24Hr: string
-};
+import './CryptoTabel.css';
+import CriptocurrencySynthesis from '../../GlobalTypes/CriptocurrencySynthesis';
 
 interface CryptoTabelState { itemsList: Array<CriptocurrencySynthesis> };
 
-class CryptoTabel extends Component <{ cryptoOrder, cryptoInTabel }, CryptoTabelState>{
-    constructor(props) {
-        super(props);
-        this.state = {
-            itemsList: this.props.cryptoInTabel
+class CryptoSocket {
+    socket: WebSocket | null = null;
+    
+    open(cryptoInfos :CriptocurrencySynthesis[], callback :(msg: object) => void) {
+        if(this.socket) {
+            this.socket.close();
         }
-    }
-
-    insertCrypto(crypto) {
-        const cryptoIndex = this.state.itemsList.indexOf(crypto);
-        if (cryptoIndex !== -1) {
-            this.setState({
-                itemsList: [...this.state.itemsList, crypto]
-            });
-        }
-    }
-
-    getCryptoPrice(crypto) {
-        this.insertCrypto(crypto);
-        // console.log(this.state, 'state')
-        let socket = new WebSocket(`wss://ws.coincap.io/prices?assets=${crypto.id}`);
-        console.log(this.state.itemsList, 'son')
+        if(!cryptoInfos.length) return;
+        const cryptoIdList = cryptoInfos.map(({id}) => id).join(',');
+        const socket = new WebSocket(`wss://ws.coincap.io/prices?assets=${cryptoIdList}`);
+        this.socket = socket;
         socket.onmessage = msg => {
-            return;
-            // if (cryptoIndex !== -1) {
-                const cryptoIndex = this.state.itemsList.indexOf(crypto);
-                // console.log(cryptoIndex, this.state.itemsList)
-                let cryptoPryce;
-                cryptoPryce = msg.data;
-                // console.log(msg.data);
-                const newItemList = [...this.state.itemsList];
-                newItemList[cryptoIndex].priceUsd = cryptoPryce;
-                this.setState({
-                    itemsList: {...this.state.itemsList}
-                });
-            // }
-        }
+            callback(msg);
+        };
+    }
+}
+
+class CryptoTabel extends Component <{ cryptoOrder, cryptoInTabel, cryptoPrice, cryptoToDelete }, CryptoTabelState>{
+
+    socketManager :CryptoSocket = new CryptoSocket();
+    
+    sendCryptoToDelete(crypto: CriptocurrencySynthesis) {
+        this.props.cryptoToDelete(crypto);
+    }
+
+    getPricelistner() {
+        this.socketManager.open(this.props.cryptoInTabel, (msg :any)=> {
+            const changes = JSON.parse(msg.data);
+            const itemList = [...this.props.cryptoInTabel];
+            Object.entries(changes).forEach(([cryptoCode, price]) => {
+                const foundCrypto = itemList.find(crypto => crypto.id === cryptoCode);
+                foundCrypto.priceUsd = price;
+            });
+            this.props.cryptoPrice(itemList);
+        });
     }
 
     reorder(col: string) {
-        getCryptoPrice(this.props.cryptoInTabel[0].id);
         this.props.cryptoInTabel.sort((a, b)=>{
             let ordered;
             a[col].toLowerCase()>b[col].toLowerCase() ? ordered=1 : ordered=-1;
@@ -69,6 +52,7 @@ class CryptoTabel extends Component <{ cryptoOrder, cryptoInTabel }, CryptoTabel
     }
 
     render(){
+        this.getPricelistner();
         return <Container>
             <Row className='first-row'>
                 <Col className='first-col col-1'>
@@ -81,16 +65,23 @@ class CryptoTabel extends Component <{ cryptoOrder, cryptoInTabel }, CryptoTabel
                 <Col className='col d-none d-md-block col-2'>
                     24h Price Change<span className='arrow' onClick={()=>this.reorder('changePercent24Hr')} />
                 </Col>
+                <Col className='col' />
             </Row>
             {this.props.cryptoInTabel.map(element=>{
                 return <Row key={element.id} className='row'>
-                    {this.getCryptoPrice(element)}
                     <Col className='first-col col-1'>{element.rank}</Col>
                     <Col className='col'>{element.symbol}</Col>
                     <Col className='col'>{element.name}</Col>
                     <Col className='col'>{element.priceUsd}</Col>
                     <Col className='col d-none d-md-block col-3'>{element.marketCapUsd}</Col>
                     <Col className='col d-none d-md-block col-2'>{element.changePercent24Hr}</Col>
+                    <Col className='col'>
+                        <button onClick={
+                            ()=>{
+                                this.sendCryptoToDelete(element);
+                            }
+                        }> X </button>
+                    </Col>
                 </Row>
             })}
         </Container>
